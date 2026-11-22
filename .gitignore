@@ -1,0 +1,9 @@
+.actrc
+.env
+.input
+.vscode
+*.Identifier
+*.orig
+*.rej
+__pycache__/
+*.py[cod]
