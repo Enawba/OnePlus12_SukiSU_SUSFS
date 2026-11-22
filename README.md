@@ -1,6 +1,8 @@
 # OnePlus 12 SukiSU + SUSFS
 
-GKI AnyKernel3 builds for the OnePlus 12 (`waffle` / SM8650) with [SukiSU](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) and SUSFS, built from OnePlus official sources (`OnePlusOSS`) and the WildKernels patch stack.
+GKI AnyKernel3 builds for the OnePlus 12 (`waffle` / SM8650) with [SukiSU Nova](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) and [SUSFS](https://gitlab.com/simonpunk/susfs4ksu), built from OnePlus official sources (`OnePlusOSS`) and the WildKernels patch stack.
+
+Latest builds: [Releases](https://github.com/Enawba/OnePlus12_SukiSU_SUSFS/releases)
 
 ## How to build
 
@@ -14,8 +16,6 @@ GKI AnyKernel3 builds for the OnePlus 12 (`waffle` / SM8650) with [SukiSU](https
 - SUSFS kernel patches come from `simonpunk/susfs4ksu` `gki-android14-6.1`, pinned to `f76b81f` (v2.4.0).
 - The KernelSU side of SUSFS is applied from [`patches/sukisu/10_enable_susfs_for_sukisu.patch`](patches/sukisu/10_enable_susfs_for_sukisu.patch): a port of upstream `10_enable_susfs_for_ksu.patch` to SukiSU (keeps SukiSU extensions, AVC/version spoofing and mount-view hiding; replaces kprobe/syscall hooks with SUSFS manual hooks).
 - Bumping SukiSU or SUSFS means regenerating that patch: apply it to the new SukiSU commit, fix rejects, `git diff > patches/sukisu/10_enable_susfs_for_sukisu.patch`.
-
-Latest builds: [Releases](https://github.com/Enawba/OnePlus12_SukiSU_SUSFS/releases)
 
 ## Disclaimer
 
@@ -99,23 +99,31 @@ State is stored on the [`monitor-state`](https://github.com/Enawba/OnePlus12_Suk
 
 - [WildKernels kernel patches](https://github.com/WildKernels/kernel_patches)
 - [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher)
-- [SukiSU](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) manager (built-in SUSFS management)
-- [SUSFS userspace module](https://github.com/sidex15/ksu_module_susfs/releases)
+- [SukiSU Nova](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) source and manager (built-in SUSFS management) — [GitHub mirror](https://github.com/SukiSU-Nova/SukiSU-Nova)
+- [SUSFS userspace module](https://github.com/sidex15/ksu_module_susfs/releases) (optional with SukiSU's built-in SUSFS screen)
 
 ## Credits
 
-Based on [WildKernels/OnePlus_KernelSU_SUSFS](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS) by fatalcoder524 and contributors.
+Build system from [Enawba/OnePlus12_KernelSU_SUSFS](https://github.com/Enawba/OnePlus12_KernelSU_SUSFS), which is based on [WildKernels/OnePlus_KernelSU_SUSFS](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS) by fatalcoder524 and contributors.
 
-- [WildKernels kernel patches](https://github.com/WildKernels/kernel_patches)
-- [KernelSU](https://github.com/tiann/KernelSU) by tiann
-- [SukiSU](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) by ShirkNeko
-- [Magic-KSU](https://github.com/5ec1cff/KernelSU) by 5ec1cff
-- [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk
+Root and hiding:
+
+- [SukiSU Nova](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) by ShirkNeko and the SukiSU team
+- [KernelSU](https://github.com/tiann/KernelSU) by tiann (upstream of SukiSU)
+- [xxksu](https://github.com/backslashxx/KernelSU) by backslashxx (kernel compatibility reference used by SukiSU)
+- [KernelPatch](https://github.com/bmax121/KernelPatch) by bmax121 (`patch_memory` code used by SukiSU mount-view hiding)
+- [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk (kernel patches and `10_enable_susfs_for_ksu.patch`, ported to SukiSU here)
 - [SUSFS module](https://github.com/sidex15/ksu_module_susfs) by sidex15
+
+Kernel and build:
+
+- [OnePlus kernel source](https://github.com/OnePlusOSS) by OnePlusOSS
+- [WildKernels kernel patches](https://github.com/WildKernels/kernel_patches) and [AnyKernel3 fork](https://github.com/WildKernels/AnyKernel3) by WildKernels
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) by osm0sis
 - [Baseband Guard](https://github.com/vc-teahouse/Baseband-guard) by vc-teahouse
 - [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) by ravindu644
-- [OnePlus kernel source](https://github.com/OnePlusOSS) by OnePlusOSS
+- ccache ECS build by cctv18
+- [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher) by fatalcoder524
 
 ## Issues
 
