@@ -1239,7 +1239,7 @@ jobs:
           EOF
           elif [ "$ksu_type" == "SUKISU" ]; then
             cat << EOF >> release_notes.md
-          - **SukiSU** - KernelSU fork with built-in SUSFS manager, KPM and kernel extension center
+          - **SukiSU Nova** (`builtin-new`) - KernelSU fork with native SUSFS inline hooks, built-in SUSFS manager and kernel extension center
           EOF
           fi
           cat << EOF >> release_notes.md
@@ -1307,8 +1307,8 @@ jobs:
           EOF
           elif [ "$ksu_type" == "SUKISU" ]; then
             cat << EOF >> release_notes.md
-          - **SukiSU Manager** (build from the same commit as this kernel; SUSFS is managed from the built-in SUSFS screen)
-            → [Source](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU)
+          - **SukiSU Nova Manager** (official signed APK attached to this release; SUSFS is managed from the built-in SUSFS screen)
+            → [Releases](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/releases)
           EOF
           fi
           cat << EOF >> release_notes.md
