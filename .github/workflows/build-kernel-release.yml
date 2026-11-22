@@ -934,6 +934,20 @@ jobs:
           commit-hash: ${{ needs.set-op-model.outputs.ksu_resolved_hash }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download SukiSU Manager
+        if: ${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type == 'SUKISU' }}
+        env:
+          # Official signed manager. SukiSU's kernel only accepts its own signing key, so a self-built APK
+          # would not be recognised. v3.0.0 -> 1366885 changes only one kernel commit (logd attrs).
+          SUKISU_MANAGER_URL: https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/releases/download/v3.0.0/SukiSU_Nova_v3.0.0_35000-release.apk
+          SUKISU_MANAGER_SHA256: 01e24cd8dd07a9bcec24f1561ce862656e9d6f10858388e1ce1973f331aa9cb6
+        run: |
+          set -euo pipefail
+          out="./downloaded-artifacts/$(basename "$SUKISU_MANAGER_URL")"
+          curl --fail --location --retry 3 --retry-delay 5 -o "$out" "$SUKISU_MANAGER_URL"
+          echo "$SUKISU_MANAGER_SHA256  $out" | sha256sum -c -
+          echo "✅ SukiSU manager downloaded: $(basename "$out")"
+
       - name: Generate Device List and Final Release Notes
         id: generate-notes
         run: |
@@ -970,6 +984,30 @@ jobs:
           ksu_type="${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type }}"
           ksu_ref="${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].hash }}"
           ksu_resolved_hash="${{ needs.set-op-model.outputs.ksu_resolved_hash }}"
+
+          # Root-variant specific release-note text
+          if [ "$ksu_type" == "SUKISU" ]; then
+            MANAGER_NAME="SukiSU Nova Manager"
+            MANAGER_INSTALL="Install the attached SukiSU Nova Manager APK (\`SukiSU_Nova_*.apk\`)."
+            COMMUNITY_MANAGERS_MD="_Other KernelSU managers (KernelSU Next, WildKSU) are not compatible with SukiSU._"
+            SUSFS_MODULE_NOTE="Optional: SukiSU Nova has a built-in SUSFS screen"
+            MANAGER_CHANGELOG="SukiSU Nova Manager attached to the release."
+            ROOT_CREDITS=$'- **ShirkNeko & SukiSU team** - SukiSU Nova root solution\n- **tiann (KernelSU)** - Upstream of SukiSU\n- **bmax121 (KernelPatch)** - Memory patching code used by SukiSU'
+          elif [ "$ksu_type" == "KSUN" ]; then
+            MANAGER_NAME="KernelSU-Next Manager"
+            MANAGER_INSTALL="Install the KernelSU-Next Manager APK, same version as mentioned in the AnyKernel3 ZIP name."
+            COMMUNITY_MANAGERS_MD=$'- **WildKSU Manager** (Recommended for additional features)  \n  → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)'
+            SUSFS_MODULE_NOTE="Required for SUSFS features"
+            MANAGER_CHANGELOG="Wild_KSU Manager Support."
+            ROOT_CREDITS=$'- **KernelSU Next Team** - Root solution\n- **KernelSU Team** - Upstream'
+          else
+            MANAGER_NAME="KernelSU Manager"
+            MANAGER_INSTALL="Install the KernelSU Manager APK, same version as mentioned in the AnyKernel3 ZIP name."
+            COMMUNITY_MANAGERS_MD=$'- **WildKSU Manager** (Recommended for additional features)  \n  → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)'
+            SUSFS_MODULE_NOTE="Required for SUSFS features"
+            MANAGER_CHANGELOG="Wild_KSU Manager Support."
+            ROOT_CREDITS="- **KernelSU Team** - Root solution"
+          fi
           
           OPTIMIZE_LEVEL="${{ inputs.optimize_level }}"
           # MLGO is only reported when clang actually accepted the flag
@@ -1272,11 +1310,10 @@ jobs:
           fi
           cat << EOF >> release_notes.md
           ### Community Managers
-          - **WildKSU Manager** (Recommended for additional features)  
-            → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)
+          ${COMMUNITY_MANAGERS_MD}
           
-          ### Required Module
-          - **KSU SUSFS Module** (Required for SUSFS features)  
+          ### SUSFS Module
+          - **KSU SUSFS Module** (${SUSFS_MODULE_NOTE})  
             → [GitHub Release](https://github.com/sidex15/ksu_module_susfs/releases)
           
           ### Recomended Flasher
@@ -1300,8 +1337,8 @@ jobs:
               c. **KSU GKI**: if you are 100% sure you already flashed stock init_boot/boot/vendor_boot, no action is needed; otherwise, follow the same steps as KSU LKM.
               d. **APatch**: remove /data/adb contents to avoid leftover root conflicts **after flashing the AnyKernel3 ZIP**.
           3. Flash the ZIP to the active slot using Kernel Flasher.
-          4. Install the KernelSU-Next Manager APK, same version as mentioned in the AnyKernel3 ZIP name.
-          5. Open the KernelSU-Next app.
+          4. ${MANAGER_INSTALL}
+          5. Open the ${MANAGER_NAME} app.
           6. Reboot the device if you performed any cleanup in step 2.
           
           ---
@@ -1316,7 +1353,7 @@ jobs:
           - Added TMPFS_XATTR and TMPFS_POSIX_ACL support for Mountify.
           - Compiler optimizations (${{ inputs.optimize_level }}${MLGO_CHANGELOG}).
           - Additional General Optimisations.
-          - Wild_KSU Manager Support.
+          - ${MANAGER_CHANGELOG}
           - Unicode Bypass Fix
           - Droidspaces Support
           - NTSync Support
@@ -1331,8 +1368,7 @@ jobs:
           ## Credits
           
           - **WildKernels (\`fatalcoder524\`)** - Build framework, compatibility layer & kernel patches ([WildKernels/OnePlus_KernelSU_SUSFS](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS))
-          - **KernelSU Next Team** - Root solution
-          - **KernelSU Team** - Root solution
+          ${ROOT_CREDITS}
           - **simonpunk** - SUSFS development
           - **sidex15** - SUSFS userspace module
           - **osm0sis** - AnyKernel3 packaging
