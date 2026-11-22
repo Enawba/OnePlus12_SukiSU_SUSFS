@@ -937,10 +937,11 @@ jobs:
       - name: Download SukiSU Manager
         if: ${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type == 'SUKISU' }}
         env:
-          # Official signed manager. SukiSU's kernel only accepts its own signing key, so a self-built APK
-          # would not be recognised. Same manager the author's GKI_KernelSU_SUSFS builtin kernels pair with.
-          SUKISU_MANAGER_URL: https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/releases/download/v3.0.0/SukiSU_Nova_v3.0.0_35000-release.apk
-          SUKISU_MANAGER_SHA256: 01e24cd8dd07a9bcec24f1561ce862656e9d6f10858388e1ce1973f331aa9cb6
+          # Official signed arm64-v8a manager from the SukiSU-Nova GitHub release (OnePlus 12 is arm64).
+          # Its v2 signing cert (sha256 947ae944..., 0x35c bytes) is the KSU_EXPECTED_HASH/SIZE built into
+          # SukiSU builtin-new, so the kernel recognises it as the manager. A self-built APK would not be.
+          SUKISU_MANAGER_URL: https://github.com/SukiSU-Nova/SukiSU-Nova/releases/download/v3.0.0/SukiSU_Nova_v3.0.0_35000-arm64-v8a-release.apk
+          SUKISU_MANAGER_SHA256: 1202adb835a64d8b3df703da7884a2966f8728c131cffb29fb5f48d31d81ac85
         run: |
           set -euo pipefail
           out="./downloaded-artifacts/$(basename "$SUKISU_MANAGER_URL")"
@@ -992,7 +993,7 @@ jobs:
             MANAGER_INSTALL="Install the attached SukiSU Nova Manager APK (\`SukiSU_Nova_*.apk\`)."
             COMMUNITY_MANAGERS_MD="_Other KernelSU managers (KernelSU Next, WildKSU) are not compatible with SukiSU._"
             SUSFS_MODULE_NOTE="Optional: SukiSU Nova has a built-in SUSFS screen"
-            MANAGER_CHANGELOG="SukiSU Nova Manager attached to the release."
+            MANAGER_CHANGELOG="KPM support and SukiSU Nova Manager (arm64-v8a) attached to the release."
             ROOT_CREDITS=$'- **ShirkNeko & SukiSU team** - SukiSU Nova root solution\n- **tiann (KernelSU)** - Upstream of SukiSU\n- **bmax121 (KernelPatch)** - Memory patching code used by SukiSU'
           elif [ "$ksu_type" == "KSUN" ]; then
             ROOT_DISPLAY="KernelSU Next"
@@ -1240,6 +1241,7 @@ jobs:
           elif [ "$ksu_type" == "SUKISU" ]; then
             cat << EOF >> release_notes.md
           - **SukiSU Nova** (`builtin-new`) - KernelSU fork with native SUSFS inline hooks, built-in SUSFS manager and kernel extension center
+          - **KPM** - KernelPatch module support (Image patched with SukiSU KernelPatch tools 0.14.0)
           EOF
           fi
           cat << EOF >> release_notes.md
@@ -1307,7 +1309,7 @@ jobs:
           EOF
           elif [ "$ksu_type" == "SUKISU" ]; then
             cat << EOF >> release_notes.md
-          - **SukiSU Nova Manager** (official signed APK attached to this release; SUSFS is managed from the built-in SUSFS screen)
+          - **SukiSU Nova Manager** (official signed arm64-v8a APK attached to this release; SUSFS and KPM modules are managed from the manager)
             → [Releases](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/releases)
           EOF
           fi

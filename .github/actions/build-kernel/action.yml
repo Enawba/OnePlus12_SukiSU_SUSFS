@@ -1100,6 +1100,13 @@ runs:
         CONFIG_KSU_SUSFS_INLINE_HOOK=y
         EOF
         fi
+        if [ "${OP_KPM:-false}" = "true" ]; then
+          # SukiSU KPM (KernelPatch modules). The built Image is patched with kptools after compile.
+          cat >> "$COMMON_KERNEL_FOLDER/arch/arm64/configs/gki_defconfig" <<EOF
+        CONFIG_KPM=y
+        EOF
+          echo "KPM enabled (CONFIG_KPM=y)"
+        fi
 
         echo "SUKISU" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
         echo "$KSU_VERSION" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
@@ -2295,6 +2302,57 @@ runs:
         echo '```' >> $GITHUB_STEP_SUMMARY
         ccache -s --verbose >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
+
+    - name: Patch Image for KPM
+      if: ${{ inputs.ksu_type == 'SUKISU' && env.OP_KPM == 'true' }}
+      shell: bash
+      env:
+        # SukiSU_KernelPatch_patch 0.14.0 (same files on Forgejo and GitHub), as used by
+        # shirkneko/GKI_KernelSU_SUSFS. KPM patching applies to 4K-page 5.10 / 5.15 / 6.1 kernels.
+        KPM_TOOLS_BASE: https://github.com/SukiSU-Nova/SukiSU_KernelPatch_patch/releases/download/0.14.0
+        KPIMG_SHA256: ab020f31ca1c058603917e46d8a6691fbce0dd5cdc135a9cd8dc780e89472716
+        KPTOOLS_SHA256: a6b912ca964d35427d7fbcd87273abac604970e9746fa0613362be971f07259d
+        KPM_PATCH_SDK_VERSION: "123"
+      run: |
+        set -euo pipefail
+        echo "::group::Patch Image for KPM"
+        case "$OP_KERNEL_VERSION" in
+          5.10|5.15|6.1) ;;
+          *) echo "::error::KPM patching is only supported on 5.10 / 5.15 / 6.1 kernels (got $OP_KERNEL_VERSION)"; exit 1 ;;
+        esac
+
+        IMG="$COMMON_KERNEL_FOLDER/out/arch/arm64/boot/Image"
+        if [ -f "$KERNEL_PLATFORM_FOLDER/out/$OP_ANDROID_VERSION-$OP_KERNEL_VERSION/dist/Image" ]; then
+          IMG="$KERNEL_PLATFORM_FOLDER/out/$OP_ANDROID_VERSION-$OP_KERNEL_VERSION/dist/Image"
+        elif [ -f "$KERNEL_PLATFORM_FOLDER/bazel-bin/common/kernel_aarch64/Image" ]; then
+          IMG="$KERNEL_PLATFORM_FOLDER/bazel-bin/common/kernel_aarch64/Image"
+        fi
+        if [ ! -f "$IMG" ]; then
+          echo "::error::Kernel Image not found at: $IMG"
+          exit 1
+        fi
+
+        TOOLS="$RUNNER_TEMP/kpm-tools"
+        rm -rf "$TOOLS" && mkdir -p "$TOOLS"
+        curl --fail --location --retry 3 --retry-delay 5 -o "$TOOLS/kpimg" "$KPM_TOOLS_BASE/kpimg"
+        curl --fail --location --retry 3 --retry-delay 5 -o "$TOOLS/kptools-linux" "$KPM_TOOLS_BASE/kptools-linux"
+        printf '%s  %s\n%s  %s\n' "$KPIMG_SHA256" "$TOOLS/kpimg" "$KPTOOLS_SHA256" "$TOOLS/kptools-linux" | sha256sum -c -
+        chmod +x "$TOOLS/kptools-linux"
+
+        WORK="$RUNNER_TEMP/kpm-work"
+        rm -rf "$WORK" && mkdir -p "$WORK"
+        cp "$IMG" "$WORK/Image"
+        cd "$WORK"
+        "$TOOLS/kptools-linux" -p -s "$KPM_PATCH_SDK_VERSION" -i Image -k "$TOOLS/kpimg" -o oImage
+        if [ ! -s oImage ]; then
+          echo "::error::KPM patching failed: oImage was not produced"
+          exit 1
+        fi
+        echo "Image: $(stat -c %s Image) bytes -> patched: $(stat -c %s oImage) bytes"
+        cp oImage "$IMG"
+        echo "KPM=true" >> "$GITHUB_ENV"
+        echo "✅ Kernel Image patched for KPM"
+        echo "::endgroup::"
 
     - name: Collect Build Stats / Validate Image
       id: collect_stats

@@ -16,7 +16,9 @@ Follows the author's own [GKI_KernelSU_SUSFS](https://git.zako.shirkneko.top:200
 
 - SukiSU is cloned from Forgejo on the **`builtin-new`** branch (pinned to `6a43516`) and wired into `drivers/kernelsu`. This branch has the KernelSU side of SUSFS built in (`CONFIG_KSU_SUSFS`, SUSFS inline hooks), so no KernelSU-side SUSFS patch is applied.
 - SUSFS kernel patches come from `simonpunk/susfs4ksu` `gki-android14-6.1`, pinned to `f76b81f` (v2.4.0).
-- Config: `CONFIG_KSU=y`, `CONFIG_KSU_SUSFS=y`, `CONFIG_KSU_SUSFS_INLINE_HOOK=y` plus the SUSFS feature options.
+- Config: `CONFIG_KSU=y`, `CONFIG_KSU_SUSFS=y`, `CONFIG_KSU_SUSFS_INLINE_HOOK=y`, `CONFIG_KPM=y` plus the SUSFS feature options.
+- KPM: after compiling, the kernel `Image` is patched with SukiSU KernelPatch tools 0.14.0 (`kptools -p -s 123 -k kpimg`), sha256-pinned. Turn it off with `"kpm": false` in `configs/`.
+- Releases attach the official signed SukiSU Nova arm64-v8a manager from the [SukiSU-Nova GitHub release](https://github.com/SukiSU-Nova/SukiSU-Nova/releases); its signing certificate matches the one built into the kernel.
 - The version number is frozen from SukiSU `main`'s commit count at clone time, matching the official manager numbering.
 - To track the latest SukiSU, run the workflow with `ksu_options` = `[{"type":"sukisu","hash":"builtin-new"}]`.
 
@@ -53,7 +55,8 @@ Check that your running kernel (`uname -r`) matches the ZIP version before flash
 
 ## Features
 
-- SukiSU root (built-in SUSFS manager, kernel extension center)
+- SukiSU Nova root (built-in SUSFS manager, kernel extension center)
+- KPM (KernelPatch modules), loadable from the SukiSU manager
 - SUSFS (`susfs4ksu`): mount, path, kstat, uname, cmdline and memory-map hiding, plus ADB JDWP socket hiding
 - Baseband Guard (BBG): LSM that protects critical partitions
 - BBRv1 and BBRv3 TCP congestion control
@@ -85,7 +88,7 @@ Steps:
    - KernelSU LKM (patched `init_boot` / `boot`): restore the stock image first so LKM does not conflict with GKI KernelSU.
    - APatch: clean up `/data/adb` leftovers after flashing the ZIP.
 3. Flash the ZIP to the active slot with [Kernel Flasher](https://github.com/fatalcoder524/KernelFlasher/releases).
-4. Install the SukiSU manager built from the same commit ([source](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU)) and configure SUSFS from its built-in SUSFS screen.
+4. Install the SukiSU Nova manager APK attached to the same release and configure SUSFS from its built-in SUSFS screen.
 5. Reboot and check `uname -r` and root status.
 
 ## Upstream source monitor
@@ -114,7 +117,7 @@ Root and hiding:
 - [SukiSU Nova](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) by ShirkNeko and the SukiSU team
 - [KernelSU](https://github.com/tiann/KernelSU) by tiann (upstream of SukiSU)
 - [xxksu](https://github.com/backslashxx/KernelSU) by backslashxx (kernel compatibility reference used by SukiSU)
-- [KernelPatch](https://github.com/bmax121/KernelPatch) by bmax121 (used by SukiSU)
+- [KernelPatch](https://github.com/bmax121/KernelPatch) by bmax121 and [SukiSU_KernelPatch_patch](https://github.com/SukiSU-Nova/SukiSU_KernelPatch_patch) (KPM)
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk (kernel patches)
 - [SUSFS module](https://github.com/sidex15/ksu_module_susfs) by sidex15
 
