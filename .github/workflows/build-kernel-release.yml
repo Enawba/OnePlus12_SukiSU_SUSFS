@@ -25,7 +25,7 @@ on:
           - android14-6.1
         default: OP12-A17
       ksu_options:
-        description: 'Enter KernelSU build json (type: sukisu | ksun | ksu). SUKISU without hash = pinned commit matching patches/sukisu'
+        description: 'Enter KernelSU build json (type: sukisu | ksun | ksu). SUKISU without hash = pinned SukiSU builtin-new commit (native SUSFS)'
         required: true
         type: string
         default: '[{"type":"sukisu"}]'
@@ -67,7 +67,7 @@ on:
         type: string
         default: ''
       android14-6_1_susfs_branch_or_commit:
-        description: 'Enter SusFS Branch or commit hash for android14-6.1 (default pinned to v2.4.0 commit matching patches/sukisu)'
+        description: 'Enter SusFS Branch or commit hash for android14-6.1 (default pinned to v2.4.0, checked against SukiSU builtin-new)'
         type: string
         default: 'f76b81f2a6bf98e4029cc0c823c054edbec29803'
       android15-6_6_susfs_branch_or_commit:
@@ -114,7 +114,7 @@ jobs:
           
           input="${{ github.event.inputs.op_model }}"
           ksu_options_raw='${{ github.event.inputs.ksu_options }}'
-          if ! ksu_options_normalized=$(echo "$ksu_options_raw" | jq -c 'map(if .type then .type |= ascii_upcase | if .hash == null then if .type == "KSUN" then .hash = "dev" elif .type == "KSU" then .hash = "main" elif .type == "SUKISU" then .hash = "13668858954a87c81cc93c3183f17c6f8ee7a6f4" else .hash end else . end else error("No type found") end)' 2>&1); then
+          if ! ksu_options_normalized=$(echo "$ksu_options_raw" | jq -c 'map(if .type then .type |= ascii_upcase | if .hash == null then if .type == "KSUN" then .hash = "dev" elif .type == "KSU" then .hash = "main" elif .type == "SUKISU" then .hash = "6a43516aed46887bc964fffeab1c38e457a3b185" else .hash end else . end else error("No type found") end)' 2>&1); then
             echo "::error::ksu_options validation failed: $ksu_options_normalized"
             exit 1
           fi
@@ -226,8 +226,8 @@ jobs:
                 exit 1
               fi
             fi
-            if [ "$resolved_sha" != "13668858954a87c81cc93c3183f17c6f8ee7a6f4" ]; then
-              echo "::warning::SUKISU $resolved_sha is not the commit patches/sukisu was made for (1366885). The SUSFS integration patch may fail to apply."
+            if [ "$resolved_sha" != "6a43516aed46887bc964fffeab1c38e457a3b185" ]; then
+              echo "::warning::SUKISU $resolved_sha is not the pinned builtin-new commit (6a43516). It must be a builtin / builtin-new commit with native SUSFS support."
             fi
           fi
 
@@ -938,7 +938,7 @@ jobs:
         if: ${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type == 'SUKISU' }}
         env:
           # Official signed manager. SukiSU's kernel only accepts its own signing key, so a self-built APK
-          # would not be recognised. v3.0.0 -> 1366885 changes only one kernel commit (logd attrs).
+          # would not be recognised. Same manager the author's GKI_KernelSU_SUSFS builtin kernels pair with.
           SUKISU_MANAGER_URL: https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/releases/download/v3.0.0/SukiSU_Nova_v3.0.0_35000-release.apk
           SUKISU_MANAGER_SHA256: 01e24cd8dd07a9bcec24f1561ce862656e9d6f10858388e1ce1973f331aa9cb6
         run: |

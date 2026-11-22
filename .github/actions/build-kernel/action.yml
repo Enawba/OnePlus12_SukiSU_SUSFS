@@ -1034,7 +1034,9 @@ runs:
         echo "::group::Add SukiSU"
         cd "$KERNEL_PLATFORM_FOLDER"
         SUKISU_REPO="https://git.zako.shirkneko.top:20004/shirkneko/SukiSU"
-        SUKISU_PINNED="13668858954a87c81cc93c3183f17c6f8ee7a6f4"
+        # builtin-new: SukiSU's built-in (GKI) branch with native SUSFS inline-hook support,
+        # the same branch the author's GKI_KernelSU_SUSFS builds use for SUSFS v2.x
+        SUKISU_PINNED="6a43516aed46887bc964fffeab1c38e457a3b185"
         KSU_INPUT="${{ inputs.ksu_branch_or_hash }}"
         KSU_INPUT="${KSU_INPUT:-$SUKISU_PINNED}"
 
@@ -1060,18 +1062,28 @@ runs:
         grep -q 'source "drivers/kernelsu/Kconfig"' "$DRIVER_DIR/Kconfig" || sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' "$DRIVER_DIR/Kconfig"
 
         cd KernelSU
-        # SukiSU's Kbuild derives its version from the Gitea API (latest main), not the checked-out
-        # commit, and needs network access at build time. Freeze it to the pinned commit instead.
-        COMMITS_COUNT=$(git rev-list --count HEAD)
+        # SukiSU numbers every branch by the commit count of main (REPO_BRANCH := main), read from the
+        # Forgejo API at build time. Freeze it here from the clone so the kernel build needs no network.
+        COMMITS_COUNT=$(git rev-list --count origin/main)
         KSU_VERSION=$((30000 + COMMITS_COUNT + 996))
-        VERSION_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//' || true)
+        VERSION_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main 2>/dev/null | sed 's/^v//' || true)
         VERSION_TAG="${VERSION_TAG:-3.0.0}"
-        sed -i -E \
-          -e "s|^KSU_RELEASE_VER[[:space:]]*:=.*|KSU_RELEASE_VER  := ${VERSION_TAG}|" \
-          -e "s|^RELEASE_COMMITS[[:space:]]*:=.*|RELEASE_COMMITS  := ${COMMITS_COUNT}|" \
-          -e "s|^REPO_BRANCH[[:space:]]*:=.*|REPO_BRANCH := main\nKSU_BUILD_REF := main|" \
-          kernel/Kbuild
-        grep -q "RELEASE_COMMITS  := ${COMMITS_COUNT}" kernel/Kbuild || { echo "::error::Failed to freeze SukiSU version in Kbuild"; exit 1; }
+        BUILD_REF=$(git branch -r --contains HEAD 2>/dev/null | sed 's|^ *origin/||' | grep -E '^builtin' | head -n1 || true)
+        BUILD_REF="${BUILD_REF:-builtin-new}"
+        VERSION_FILES=$(grep -l '^RELEASE_COMMITS' kernel/Kbuild kernel/Makefile 2>/dev/null || true)
+        if [ -z "$VERSION_FILES" ]; then
+          echo "::error::Could not find SukiSU version block (RELEASE_COMMITS) in kernel/Kbuild or kernel/Makefile"
+          exit 1
+        fi
+        for vf in $VERSION_FILES; do
+          sed -i -E \
+            -e "s|^KSU_RELEASE_VER[[:space:]]*:=.*|KSU_RELEASE_VER  := ${VERSION_TAG}|" \
+            -e "s|^RELEASE_COMMITS[[:space:]]*:=.*|RELEASE_COMMITS  := ${COMMITS_COUNT}|" \
+            -e "s|^REPO_BRANCH[[:space:]]*:=.*|REPO_BRANCH := main\nKSU_BUILD_REF := ${BUILD_REF}|" \
+            "$vf"
+          grep -q "RELEASE_COMMITS  := ${COMMITS_COUNT}" "$vf" || { echo "::error::Failed to freeze SukiSU version in $vf"; exit 1; }
+          echo "Froze SukiSU version in $vf"
+        done
 
         echo "NEED_HOOKS=false" >> $GITHUB_ENV
         KSU_COMMIT_SHA=$(git rev-parse HEAD)
@@ -1080,8 +1092,14 @@ runs:
         echo "Add SukiSU Configuration Settings"
         cat >> "$COMMON_KERNEL_FOLDER/arch/arm64/configs/gki_defconfig" <<EOF
         CONFIG_KSU=y
-        CONFIG_KSU_MANUAL_SU=y
         EOF
+        if [ "${OP_SUSFS:-false}" = "true" ]; then
+          # builtin-new: SUSFS defaults to n and must be built in; inline hooks are the only
+          # supported hook backend with SUSFS (kprobes / syscall-table / branch-link hooks are disabled)
+          cat >> "$COMMON_KERNEL_FOLDER/arch/arm64/configs/gki_defconfig" <<EOF
+        CONFIG_KSU_SUSFS_INLINE_HOOK=y
+        EOF
+        fi
 
         echo "SUKISU" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
         echo "$KSU_VERSION" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
@@ -1118,19 +1136,16 @@ runs:
         fi
 
         if [ "${{ inputs.ksu_type }}" = "SUKISU" ]; then
-          # SukiSU has no SUSFS dispatch of its own: apply the SukiSU port of
-          # susfs4ksu's 10_enable_susfs_for_ksu.patch (made against SukiSU 1366885 + SUSFS v2.4.0 f76b81f)
-          SUKI_PATCH="${GITHUB_WORKSPACE}/action-source/patches/sukisu/10_enable_susfs_for_sukisu.patch"
-          cd "$KSU_FOLDER"
-          if ! patch -p1 --forward --batch --dry-run < "$SUKI_PATCH" > /tmp/sukisu-susfs-dryrun.log 2>&1; then
-            cat /tmp/sukisu-susfs-dryrun.log >&2
-            echo "::error::SukiSU SUSFS patch does not apply to SukiSU ${KSU_COMMIT_SHA:-?}. Use the pinned SukiSU commit or regenerate patches/sukisu."
+          # SukiSU builtin-new ships the KernelSU side of SUSFS natively (CONFIG_KSU_SUSFS +
+          # SUSFS reboot dispatch), so 10_enable_susfs_for_ksu.patch is NOT applied. Only the
+          # kernel-side 50_add_susfs patch below is needed, as in the author's GKI_KernelSU_SUSFS.
+          if ! grep -q 'config KSU_SUSFS$' "$KSU_FOLDER/kernel/Kconfig"; then
+            echo "::error::SukiSU ${KSU_COMMIT_SHA:-?} has no native SUSFS support (use a builtin / builtin-new commit)"
             exit 1
           fi
-          patch -p1 --forward --batch --no-backup-if-mismatch < "$SUKI_PATCH"
           case "$susfs_version" in
             "v2.4.0") ;;
-            *) echo "::warning::patches/sukisu targets SUSFS v2.4.0, but SUSFS is $susfs_version. KernelSU-side SUSFS ABI may mismatch." ;;
+            *) echo "::warning::SukiSU builtin-new was checked against SUSFS v2.4.0, but SUSFS is $susfs_version." ;;
           esac
         else
         case "$susfs_version" in

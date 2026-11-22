@@ -12,10 +12,13 @@ Latest builds: [Releases](https://github.com/Enawba/OnePlus12_SukiSU_SUSFS/relea
 
 ### How SukiSU + SUSFS is wired
 
-- SukiSU is cloned from Forgejo at a pinned commit (`1366885`) and wired into `drivers/kernelsu`.
+Follows the author's own [GKI_KernelSU_SUSFS](https://git.zako.shirkneko.top:20004/shirkneko/GKI_KernelSU_SUSFS) setup:
+
+- SukiSU is cloned from Forgejo on the **`builtin-new`** branch (pinned to `6a43516`) and wired into `drivers/kernelsu`. This branch has the KernelSU side of SUSFS built in (`CONFIG_KSU_SUSFS`, SUSFS inline hooks), so no KernelSU-side SUSFS patch is applied.
 - SUSFS kernel patches come from `simonpunk/susfs4ksu` `gki-android14-6.1`, pinned to `f76b81f` (v2.4.0).
-- The KernelSU side of SUSFS is applied from [`patches/sukisu/10_enable_susfs_for_sukisu.patch`](patches/sukisu/10_enable_susfs_for_sukisu.patch): a port of upstream `10_enable_susfs_for_ksu.patch` to SukiSU (keeps SukiSU extensions, AVC/version spoofing and mount-view hiding; replaces kprobe/syscall hooks with SUSFS manual hooks).
-- Bumping SukiSU or SUSFS means regenerating that patch: apply it to the new SukiSU commit, fix rejects, `git diff > patches/sukisu/10_enable_susfs_for_sukisu.patch`.
+- Config: `CONFIG_KSU=y`, `CONFIG_KSU_SUSFS=y`, `CONFIG_KSU_SUSFS_INLINE_HOOK=y` plus the SUSFS feature options.
+- The version number is frozen from SukiSU `main`'s commit count at clone time, matching the official manager numbering.
+- To track the latest SukiSU, run the workflow with `ksu_options` = `[{"type":"sukisu","hash":"builtin-new"}]`.
 
 ## Disclaimer
 
@@ -104,15 +107,15 @@ State is stored on the [`monitor-state`](https://github.com/Enawba/OnePlus12_Suk
 
 ## Credits
 
-Build system from [Enawba/OnePlus12_KernelSU_SUSFS](https://github.com/Enawba/OnePlus12_KernelSU_SUSFS), which is based on [WildKernels/OnePlus_KernelSU_SUSFS](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS) by fatalcoder524 and contributors.
+SukiSU + SUSFS integration follows [shirkneko/GKI_KernelSU_SUSFS](https://git.zako.shirkneko.top:20004/shirkneko/GKI_KernelSU_SUSFS). Build system from [Enawba/OnePlus12_KernelSU_SUSFS](https://github.com/Enawba/OnePlus12_KernelSU_SUSFS), which is based on [WildKernels/OnePlus_KernelSU_SUSFS](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS) by fatalcoder524 and contributors.
 
 Root and hiding:
 
 - [SukiSU Nova](https://git.zako.shirkneko.top:20004/shirkneko/SukiSU) by ShirkNeko and the SukiSU team
 - [KernelSU](https://github.com/tiann/KernelSU) by tiann (upstream of SukiSU)
 - [xxksu](https://github.com/backslashxx/KernelSU) by backslashxx (kernel compatibility reference used by SukiSU)
-- [KernelPatch](https://github.com/bmax121/KernelPatch) by bmax121 (`patch_memory` code used by SukiSU mount-view hiding)
-- [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk (kernel patches and `10_enable_susfs_for_ksu.patch`, ported to SukiSU here)
+- [KernelPatch](https://github.com/bmax121/KernelPatch) by bmax121 (used by SukiSU)
+- [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk (kernel patches)
 - [SUSFS module](https://github.com/sidex15/ksu_module_susfs) by sidex15
 
 Kernel and build:
