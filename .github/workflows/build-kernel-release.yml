@@ -881,7 +881,7 @@ jobs:
       REPO_NAME: ${{ github.event.repository.name }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SUSFS_BASE_VERSION: ${{ needs.set-op-model.outputs.susfs_base_version }}
-      RELEASE_NAME: 'OnePlus 12 Kernel With KernelSU Next & SUSFS ${{ needs.set-op-model.outputs.susfs_base_version }}'
+      RELEASE_NAME: "OnePlus 12 Kernel With ${{ fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type == 'SUKISU' && 'SukiSU Nova' || fromJSON(needs.set-op-model.outputs.ksu_options_normalized)[0].type == 'KSU' && 'KernelSU' || 'KernelSU Next' }} & SUSFS ${{ needs.set-op-model.outputs.susfs_base_version }}"
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v6
@@ -987,6 +987,7 @@ jobs:
 
           # Root-variant specific release-note text
           if [ "$ksu_type" == "SUKISU" ]; then
+            ROOT_DISPLAY="SukiSU Nova"
             MANAGER_NAME="SukiSU Nova Manager"
             MANAGER_INSTALL="Install the attached SukiSU Nova Manager APK (\`SukiSU_Nova_*.apk\`)."
             COMMUNITY_MANAGERS_MD="_Other KernelSU managers (KernelSU Next, WildKSU) are not compatible with SukiSU._"
@@ -994,6 +995,7 @@ jobs:
             MANAGER_CHANGELOG="SukiSU Nova Manager attached to the release."
             ROOT_CREDITS=$'- **ShirkNeko & SukiSU team** - SukiSU Nova root solution\n- **tiann (KernelSU)** - Upstream of SukiSU\n- **bmax121 (KernelPatch)** - Memory patching code used by SukiSU'
           elif [ "$ksu_type" == "KSUN" ]; then
+            ROOT_DISPLAY="KernelSU Next"
             MANAGER_NAME="KernelSU-Next Manager"
             MANAGER_INSTALL="Install the KernelSU-Next Manager APK, same version as mentioned in the AnyKernel3 ZIP name."
             COMMUNITY_MANAGERS_MD=$'- **WildKSU Manager** (Recommended for additional features)  \n  → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)'
@@ -1001,6 +1003,7 @@ jobs:
             MANAGER_CHANGELOG="Wild_KSU Manager Support."
             ROOT_CREDITS=$'- **KernelSU Next Team** - Root solution\n- **KernelSU Team** - Upstream'
           else
+            ROOT_DISPLAY="KernelSU"
             MANAGER_NAME="KernelSU Manager"
             MANAGER_INSTALL="Install the KernelSU Manager APK, same version as mentioned in the AnyKernel3 ZIP name."
             COMMUNITY_MANAGERS_MD=$'- **WildKSU Manager** (Recommended for additional features)  \n  → [GitHub Release](https://github.com/WildKernels/Wild_KSU/releases)'
@@ -1137,7 +1140,7 @@ jobs:
           fi
 
           cat << EOF > release_notes.md
-          # OnePlus 12 Kernel with KernelSU Next & SUSFS $SUSFS_BASE_VERSION
+          # OnePlus 12 Kernel with ${ROOT_DISPLAY} & SUSFS $SUSFS_BASE_VERSION
           
           > **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')  
           > **Kernel Uname:** $kernel_uname_display  
